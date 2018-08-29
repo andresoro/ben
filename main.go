@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -16,10 +18,14 @@ func fileHandle(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, *assets)
 }
 
+func folderHandle(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func main() {
 	flag.Parse()
 
-	var h http.Handler
+	var name string
 
 	file, err := os.Open(*assets)
 	if err != nil {
@@ -30,16 +36,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	name = fi.Name()
 
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
-		h = http.StripPrefix(*assets, http.FileServer(http.Dir(fi.Name())))
-		http.Handle("/", h)
+		//handle
+		fs := http.FileServer(http.Dir(name))
+		http.Handle("/", fs)
+
+		//log
+		files, err := ioutil.ReadDir(name)
+		if err != nil {
+			log.Printf("Error looping files: %s", err)
+		}
+		log.Printf("Serving following files in %s", name)
+		for _, f := range files {
+			fmt.Println(f.Name())
+		}
+
 	case mode.IsRegular():
+		log.Printf("Handling %s", name)
 		http.HandleFunc("/", fileHandle)
 
 	}
-
+	log.Printf("Hosting server on port %s", *port)
 	log.Fatal(http.ListenAndServe(*port, nil))
 
 }
