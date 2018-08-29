@@ -18,10 +18,6 @@ func fileHandle(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, *assets)
 }
 
-func folderHandle(w http.ResponseWriter, r *http.Request) {
-
-}
-
 func main() {
 	flag.Parse()
 
