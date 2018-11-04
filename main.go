@@ -1,22 +1,21 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 
+	"github.com/russross/blackfriday"
+
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	port   = flag.String("port", ":8080", "port to host server on")
-	assets = flag.String("assets", "", "directory of files to serve over http")
-)
-
-func fileHandle(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, *assets)
+// Post represents a blog post
+type Post struct {
+	Title   string
+	Content string
 }
 
 func main() {
@@ -26,6 +25,7 @@ func main() {
 	r.Delims("{{", "}}")
 
 	r.GET("/", indexHandler())
+	r.GET("/:post", postHandler())
 
 	r.Run()
 }
@@ -43,6 +43,25 @@ func indexHandler() gin.HandlerFunc {
 		}
 		c.HTML(http.StatusOK, "index.tmpl.html", gin.H{
 			"posts": posts,
+		})
+	}
+}
+
+func postHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		postName := c.Param("post")
+
+		md, err := ioutil.ReadFile("./posts/" + postName)
+		if err != nil {
+			//TODO: handler error with error page
+			log.Fatal(err)
+		}
+		s := blackfriday.MarkdownCommon([]byte(md))
+		html := template.HTML(s)
+
+		c.HTML(http.StatusOK, "post.tmpl.html", gin.H{
+			"Title":   postName,
+			"Content": html,
 		})
 	}
 }
