@@ -6,7 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -19,43 +20,29 @@ func fileHandle(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	flag.Parse()
+	r := gin.Default()
+	r.Use(gin.Logger())
+	r.LoadHTMLGlob("./templates/*.tmpl.html")
+	r.Delims("{{", "}}")
 
-	var name string
+	r.GET("/", indexHandler())
 
-	file, err := os.Open(*assets)
-	if err != nil {
-		log.Fatal(err)
-	}
+	r.Run()
+}
 
-	fi, err := file.Stat()
-	if err != nil {
-		log.Fatal(err)
-	}
-	name = fi.Name()
-
-	switch mode := fi.Mode(); {
-	case mode.IsDir():
-		//handle
-		fs := http.FileServer(http.Dir(name))
-		http.Handle("/", fs)
-
-		//log
-		files, err := ioutil.ReadDir(name)
+func indexHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var posts []string
+		files, err := ioutil.ReadDir("./posts")
 		if err != nil {
-			log.Printf("Error looping files: %s", err)
+			log.Fatal(err)
 		}
-		log.Printf("Serving following files in %s", name)
-		for _, f := range files {
-			fmt.Println(f.Name())
+		for _, file := range files {
+			fmt.Println(file.Name())
+			posts = append(posts, file.Name())
 		}
-
-	case mode.IsRegular():
-		log.Printf("Handling %s", name)
-		http.HandleFunc("/", fileHandle)
-
+		c.HTML(http.StatusOK, "index.tmpl.html", gin.H{
+			"posts": posts,
+		})
 	}
-	log.Printf("Hosting server on port %s", *port)
-	log.Fatal(http.ListenAndServe(*port, nil))
-
 }
