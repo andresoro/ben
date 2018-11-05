@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -12,6 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var (
+	posts     = flag.String("p", "posts", "Folder where .md posts are held")
+	templates = flag.String("t", "templates", "folder where templates are held")
+)
+
+// map md file names to raw html bytes
+var html map[string][]byte
+
 // Post represents a blog post
 type Post struct {
 	Title   string
@@ -19,6 +28,8 @@ type Post struct {
 }
 
 func main() {
+	flag.Parse()
+
 	r := gin.Default()
 	r.Use(gin.Logger())
 	r.LoadHTMLGlob("./templates/*.tmpl.html")
@@ -30,6 +41,7 @@ func main() {
 	r.Run()
 }
 
+// Handler index
 func indexHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var posts []string
@@ -47,6 +59,7 @@ func indexHandler() gin.HandlerFunc {
 	}
 }
 
+// Handle individual posts
 func postHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		postName := c.Param("post")
@@ -64,4 +77,22 @@ func postHandler() gin.HandlerFunc {
 			"Content": html,
 		})
 	}
+}
+
+// convert markdown into html map
+func processMarkdown() error {
+	files, err := ioutil.ReadDir("./posts")
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		name := file.Name()
+		md, err := ioutil.ReadFile("./posts" + name)
+		if err != nil {
+			return err
+		}
+		html[name] = blackfriday.MarkdownCommon([]byte(md))
+	}
+	return nil
 }
