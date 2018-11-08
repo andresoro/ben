@@ -18,9 +18,6 @@ var (
 	templates = flag.String("t", "templates", "folder where templates are held")
 )
 
-// map md file names to raw html bytes
-var html map[string][]byte
-
 // Post represents a blog post
 type Post struct {
 	Title   string
@@ -80,19 +77,22 @@ func postHandler() gin.HandlerFunc {
 }
 
 // convert markdown into html map
-func processMarkdown() error {
+func processMarkdown() (map[string][]byte, error) {
+	// map md file names to raw html bytes
+	var html map[string][]byte
+
 	files, err := ioutil.ReadDir("./posts")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, file := range files {
 		name := file.Name()
 		md, err := ioutil.ReadFile("./posts" + name)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		html[name] = blackfriday.MarkdownCommon([]byte(md))
 	}
-	return nil
+	return html, nil
 }
