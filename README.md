@@ -1,4 +1,3 @@
-# static
-Static website builder
+# ben
 
-This program aims to build and serve html, markdown, and other static assets. 
+Ben is a simple blog engine that converts .md files to html and hosts them over http. 
