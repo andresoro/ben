@@ -14,9 +14,11 @@ import (
 )
 
 var (
-	posts     = flag.String("p", "posts", "Folder where .md posts are held")
+	data      = flag.String("p", "posts", "Folder where .md posts are held")
 	templates = flag.String("t", "templates", "folder where templates are held")
 )
+
+type posts map[string][]byte
 
 // Post represents a blog post
 type Post struct {
@@ -27,13 +29,18 @@ type Post struct {
 func main() {
 	flag.Parse()
 
+	posts, err := processMarkdown()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	r := gin.Default()
 	r.Use(gin.Logger())
 	r.LoadHTMLGlob("./templates/*.tmpl.html")
 	r.Delims("{{", "}}")
 
 	r.GET("/", indexHandler())
-	r.GET("/:post", postHandler())
+	r.GET("/:post", postHandler(posts))
 
 	r.Run()
 }
@@ -57,17 +64,20 @@ func indexHandler() gin.HandlerFunc {
 }
 
 // Handle individual posts
-func postHandler() gin.HandlerFunc {
+func postHandler(p posts) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		postName := c.Param("post")
 
-		md, err := ioutil.ReadFile("./posts/" + postName)
-		if err != nil {
-			//TODO: handler error with error page
-			log.Fatal(err)
+		md, ok := p[postName]
+		if !ok {
+			c.HTML(http.StatusOK, "post.tmpl.html", gin.H{
+				"Title":   "Not found",
+				"Content": "",
+			})
+			return
 		}
-		s := blackfriday.MarkdownCommon([]byte(md))
-		html := template.HTML(s)
+
+		html := template.HTML(md)
 
 		c.HTML(http.StatusOK, "post.tmpl.html", gin.H{
 			"Title":   postName,
@@ -79,7 +89,7 @@ func postHandler() gin.HandlerFunc {
 // convert markdown into html map
 func processMarkdown() (map[string][]byte, error) {
 	// map md file names to raw html bytes
-	var html map[string][]byte
+	html := make(map[string][]byte)
 
 	files, err := ioutil.ReadDir("./posts")
 	if err != nil {
@@ -88,7 +98,7 @@ func processMarkdown() (map[string][]byte, error) {
 
 	for _, file := range files {
 		name := file.Name()
-		md, err := ioutil.ReadFile("./posts" + name)
+		md, err := ioutil.ReadFile("./posts/" + name)
 		if err != nil {
 			return nil, err
 		}
