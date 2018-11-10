@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/russross/blackfriday"
 
@@ -29,6 +31,7 @@ type Post struct {
 func main() {
 	flag.Parse()
 
+	// process all posts into memory
 	posts, err := processMarkdown()
 	if err != nil {
 		log.Fatal(err)
@@ -48,14 +51,17 @@ func main() {
 // Handler index
 func indexHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var posts []string
-		files, err := ioutil.ReadDir("./posts")
+		posts := make(map[string]string)
+		files, err := ioutil.ReadDir(*data)
 		if err != nil {
 			log.Fatal(err)
 		}
 		for _, file := range files {
 			fmt.Println(file.Name())
-			posts = append(posts, file.Name())
+			path := file.Name()
+			name := strings.TrimSuffix(path, filepath.Ext(path))
+
+			posts[path] = name
 		}
 		c.HTML(http.StatusOK, "index.tmpl.html", gin.H{
 			"posts": posts,
@@ -72,7 +78,7 @@ func postHandler(p posts) gin.HandlerFunc {
 		if !ok {
 			c.HTML(http.StatusOK, "post.tmpl.html", gin.H{
 				"Title":   "Not found",
-				"Content": "",
+				"Content": "This post does not exist",
 			})
 			return
 		}
@@ -97,8 +103,8 @@ func processMarkdown() (map[string][]byte, error) {
 	}
 
 	for _, file := range files {
-		name := file.Name()
-		md, err := ioutil.ReadFile("./posts/" + name)
+		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+		md, err := ioutil.ReadFile("./posts/" + file.Name())
 		if err != nil {
 			return nil, err
 		}

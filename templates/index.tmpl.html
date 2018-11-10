@@ -8,8 +8,8 @@
 <body>
   <div class="container">
     <ul>
-      {{ range .posts }}
-        <li><a href="/{{ . }}">{{ . }}</a></li>
+      {{ range $url, $name := .posts }}
+        <li><a href="/{{ $name }}">{{ $name }}</a></li>
       {{ end }}
     </ul>
   </div>
